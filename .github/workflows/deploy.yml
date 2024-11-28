@@ -1,0 +1,55 @@
+name: Deploy Horizon Banking
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Copy SSH Key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.VPS_SSH_KEY }}
+          name: id_rsa
+          known_hosts: ${{ secrets.VPS_HOST }}
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v0.1.5
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            
+            # Pull latest code
+            if [ -d ~/horizon-banking ]; then
+              cd ~/horizon-banking && git pull
+            else
+              git clone https://github.com/your-github-username/horizon-banking.git ~/horizon-banking
+              cd ~/horizon-banking
+            fi
+            
+            # Build Docker image
+            sudo docker build -t horizon-banking:latest .
+            
+            # Stop and remove existing container
+            sudo docker stop horizon-banking || true
+            sudo docker rm horizon-banking || true
+            
+            # Run the container with environment variables
+            sudo docker run -d \
+              --name horizon-banking \
+              --env-file /var/envs/horizon-banking.env \
+              -p 3001:3000 \
+              --restart unless-stopped \
+              horizon-banking:latest
+            
+            # Clean up dangling images
+            sudo docker image prune -f
