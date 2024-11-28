@@ -16,6 +16,7 @@ COPY --from=build /app/package.json /app/next.config* ./
 COPY --from=build /app/.next ./.next
 COPY --from=build /app/public ./public
 COPY --from=build /app/.env ./.env
+COPY --from=build /app/sentry* ./
 RUN yarn install
 CMD ["yarn" , "start"]
 EXPOSE 3000
